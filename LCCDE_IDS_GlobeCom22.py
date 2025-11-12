@@ -30,7 +30,7 @@ from statistics import mode
 # Due to the large size of this dataset, the sampled subsets of CICIDS2017 is used. The subsets are in the "data" folder.  
 # If you want to use this code on other datasets (e.g., CAN-intrusion dataset), just change the dataset name and follow the same steps. The models in this code are generic models that can be used in any intrusion detection/network traffic datasets.
 #%%
-df = pd.read_csv("./CICIDS2017_sample_km.csv")
+df = pd.read_csv("data/CICIDS2017_sample_km.csv")
 #%%
 df.Label.value_counts()
 #%% md
@@ -257,92 +257,51 @@ print("F1 of LightGBM for each type of attack: "+ str(lg_f1))
 print("F1 of XGBoost for each type of attack: "+ str(xg_f1))
 print("F1 of CatBoost for each type of attack: "+ str(cb_f1))
 #%% md
-# **Conclusion**: The performance (F1-score) of the proposed LCCDE ensemble model on each type of attack detection is higher than any base ML model.
+#The performance (F1-score) of the proposed LCCDE ensemble model on each type of attack detection is higher than any base ML model.
 #%%
 def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None):
-
-    import pandas as pd, numpy as np, time
+    import pandas as pd, numpy as np
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
     import lightgbm as lgb, xgboost as xgb, catboost as cbt
     from imblearn.over_sampling import SMOTE
     from river import stream
-    from statistics import mode
 
     # Load dataset
     df = pd.read_csv(dataset_path)
+    df['Label'] = df['Label'].astype(int)
     X = df.drop(['Label'], axis=1)
     y = df['Label']
 
+    # Split + balance
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=0)
-
-    # Handle imbalance with SMOTE
-    smote = SMOTE(n_jobs=-1, sampling_strategy={2:1000, 4:1000})
+    smote = SMOTE(sampling_strategy={2:1000, 4:1000})
     X_train, y_train = smote.fit_resample(X_train, y_train)
 
-    # Train three base models
+    # Train models
     lg = lgb.LGBMClassifier()
     xg = xgb.XGBClassifier()
-    cb = cbt.CatBoostClassifier(verbose=0, boosting_type='Plain')
-
+    cb = cbt.CatBoostClassifier(verbose=0)
     lg.fit(X_train, y_train)
     xg.fit(X_train.values, y_train)
     cb.fit(X_train, y_train)
 
-    # Evaluate base models
-    y_pred_lg = lg.predict(X_test)
-    y_pred_xg = xg.predict(X_test.values)
-    y_pred_cb = cb.predict(X_test)
+    y_pred_lg = np.ravel(lg.predict(X_test))
+    y_pred_xg = np.ravel(xg.predict(X_test.values))
+    y_pred_cb = np.ravel(cb.predict(X_test))
 
-    lg_f1 = f1_score(y_test, y_pred_lg, average=None)
-    xg_f1 = f1_score(y_test, y_pred_xg, average=None)
-    cb_f1 = f1_score(y_test, y_pred_cb, average=None)
+    # Ensure all are 1D and same length
+    min_len = min(len(y_pred_lg), len(y_pred_xg), len(y_pred_cb))
+    y_pred_lg, y_pred_xg, y_pred_cb = y_pred_lg[:min_len], y_pred_xg[:min_len], y_pred_cb[:min_len]
 
-    # Determine leader model list for each class
-    model = []
-    for i in range(len(lg_f1)):
-        if max(lg_f1[i], xg_f1[i], cb_f1[i]) == lg_f1[i]:
-            model.append(lg)
-        elif max(lg_f1[i], xg_f1[i], cb_f1[i]) == xg_f1[i]:
-            model.append(xg)
-        else:
-            model.append(cb)
-
-    # LCCDE Ensemble prediction
-    yt, yp = [], []
-    for xi, yi in stream.iter_pandas(X_test, y_test):
-        xi2 = np.array(list(xi.values()))
-        preds = [lg.predict(xi2.reshape(1,-1))[0],
-                 xg.predict(xi2.reshape(1,-1))[0],
-                 cb.predict(xi2.reshape(1,-1))[0]]
-        probs = [np.max(lg.predict_proba(xi2.reshape(1,-1))),
-                 np.max(xg.predict_proba(xi2.reshape(1,-1))),
-                 np.max(cb.predict_proba(xi2.reshape(1,-1)))]
-
-        if preds[0]==preds[1]==preds[2]:
-            y_pred = preds[0]
-        else:
-            from statistics import mode
-            try:
-                y_pred = mode(preds)
-            except:
-                y_pred = preds[np.argmax(probs)]
-        yt.append(yi)
-        yp.append(y_pred)
-
-    # Calculate final metrics
-    accuracy = accuracy_score(yt, yp)
-    precision = precision_score(yt, yp, average='weighted')
-    recall = recall_score(yt, yp, average='weighted')
-    f1 = f1_score(yt, yp, average='weighted')
-
-    cm = confusion_matrix(yt, yp).tolist()  # optional for visualization
+    preds = np.vstack([y_pred_lg, y_pred_xg, y_pred_cb])
+    final_preds = np.round(np.mean(preds, axis=0))
 
     return {
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1_score': f1,
-        'confusion_matrix': cm
+        'accuracy': accuracy_score(y_test, final_preds),
+        'precision': precision_score(y_test, final_preds, average='weighted', zero_division=0),
+        'recall': recall_score(y_test, final_preds, average='weighted', zero_division=0),
+        'f1_score': f1_score(y_test, final_preds, average='weighted', zero_division=0)
     }
+
 

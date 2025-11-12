@@ -1,59 +1,48 @@
 import sqlite3
+from datetime import datetime
+from LCCDE_IDS_GlobeCom22 import run_lccde_model
 
-conn = sqlite3.connect("ids_ml.db")
-cursor = conn.cursor()
+DB = "ids_ml.db"
 
-# Add model
-cursor.execute("""
-INSERT INTO Models (model_name, description, algorithm_type, version)
-VALUES ('LCCDE', 'Lightweight Cooperative Coevolution Differential Evolution IDS', 'Evolutionary', '1.0');
-""")
+def get_conn():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# Add dataset
-cursor.execute("""
-INSERT INTO Datasets (dataset_name, source_url, num_records, features_count, preprocessing)
-VALUES ('NSL-KDD', 'https://www.unb.ca/cic/datasets/nsl.html', 125973, 41, 'Normalized + Feature selection');
-""")
+# Initialize schema if not exists
+with open("schema.sql") as f:
+    conn = get_conn()
+    conn.executescript(f.read())
+    conn.commit()
+    conn.close()
+    print("Database schema initialized.")
 
-# Add run
-cursor.execute("""
-INSERT INTO Runs (user_id, model_id, dataset_id, status, runtime_seconds, notes)
-VALUES (NULL, 1, 1, 'completed', 4.82, 'Run triggered from UI, baseline LCCDE');
-""")
+# Ensure LCCDE model exists
+conn = get_conn()
+cur = conn.cursor()
+cur.execute("INSERT OR IGNORE INTO Models (model_name, description) VALUES (?, ?);",
+            ("LCCDE", "Leader Class and Confidence Decision Ensemble IDS"))
+conn.commit()
 
-# Insert parameters (user input)
-params = {
-    'population_size': '50',
-    'generations': '100',
-    'mutation_factor': '0.8',
-    'crossover_rate': '0.9'
-}
-for name, val in params.items():
-    cursor.execute("""
-    INSERT INTO Parameters (run_id, param_name, param_value, data_type)
-    VALUES (1, ?, ?, 'float');
-    """, (name, val))
+# Run model on dataset
+print("Running LCCDE model...")
+metrics = run_lccde_model(dataset_path="/data/CICIDS2017_sample_km.csv")
 
-# Insert metrics (results)
-metrics = {
-    'accuracy': 0.974,
-    'precision': 0.977,
-    'recall': 0.965,
-    'f1_score': 0.971,
-    'roc_auc': 0.982
-}
-for name, val in metrics.items():
-    cursor.execute("""
-    INSERT INTO Metrics (run_id, metric_name, metric_value)
-    VALUES (1, ?, ?);
-    """, (name, val))
+# Insert a run entry
+cur.execute("""
+    INSERT INTO Runs (model_id, dataset_name, status, runtime_sec, notes)
+    VALUES ((SELECT model_id FROM Models WHERE model_name='LCCDE'),
+            ?, 'completed', 0, 'Run from insert_data.py');
+""", ("CICIDS2017_sample_km.csv",))
+run_id = cur.lastrowid
 
-# Insert confusion matrix
-cursor.execute("""
-INSERT INTO ConfusionMatrix (run_id, true_positive, false_positive, true_negative, false_negative)
-VALUES (1, 5123, 132, 4981, 164);
-""")
+# Insert metrics
+for name, value in metrics.items():
+    if name != 'confusion_matrix':
+        cur.execute("INSERT INTO Metrics (run_id, metric_name, metric_value) VALUES (?, ?, ?);",
+                    (run_id, name, value))
 
 conn.commit()
 conn.close()
-print("All IDS-ML experiment data stored successfully.")
+
+print("Data inserted for run ID:", run_id)
