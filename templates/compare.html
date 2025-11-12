@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Compare Results</h2>
+<form action="/compare" method="POST" class="mb-4">
+  <label>Select Runs to Compare:</label>
+  <select multiple name="run_ids" class="form-select">
+    {% for run in runs %}
+    <option value="{{ run.id }}">{{ run.model }} — {{ run.timestamp }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-success mt-2">Compare</button>
+</form>
+
+<canvas id="comparisonChart" width="400" height="200"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

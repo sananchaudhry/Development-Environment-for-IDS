@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Run Machine Learning Model</h2>
+
+<form action="/run_model" method="POST" class="p-4 bg-light rounded shadow-sm">
+  <div class="mb-3">
+    <label class="form-label">Select Model</label>
+    <select class="form-select" name="model">
+      <option value="LCCDE">LCCDE</option>
+      <option value="Tree-Based">Tree-Based IDS</option>
+      <option value="MTH-IDS">MTH-IDS</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Dataset</label>
+    <input type="text" class="form-control" name="dataset" placeholder="Enter dataset name">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Parameters</label>
+    <textarea class="form-control" name="parameters" rows="3" placeholder="Enter parameters (JSON or key=value)"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Run Model</button>
+</form>
+{% endblock %}

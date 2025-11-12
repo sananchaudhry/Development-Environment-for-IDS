@@ -1,0 +1,19 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f8f9fa;
+}
+
+h2 {
+  color: #212529;
+  font-weight: 600;
+}
+
+form {
+  max-width: 600px;
+  margin: auto;
+}
+
+footer p {
+  margin: 0;
+  font-size: 0.9rem;
+}

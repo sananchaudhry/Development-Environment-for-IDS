@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Run History</h2>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Model</th>
+      <th>Dataset</th>
+      <th>Date</th>
+      <th>Accuracy</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for run in runs %}
+    <tr>
+      <td>{{ run.id }}</td>
+      <td>{{ run.model }}</td>
+      <td>{{ run.dataset }}</td>
+      <td>{{ run.timestamp }}</td>
+      <td>{{ run.accuracy }}</td>
+      <td>
+        <a href="/view/{{ run.id }}" class="btn btn-sm btn-info">View</a>
+        <a href="/delete/{{ run.id }}" class="btn btn-sm btn-danger">Delete</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
