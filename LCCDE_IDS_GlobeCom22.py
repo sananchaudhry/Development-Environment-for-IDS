@@ -259,13 +259,20 @@ print("F1 of CatBoost for each type of attack: "+ str(cb_f1))
 #%% md
 #The performance (F1-score) of the proposed LCCDE ensemble model on each type of attack detection is higher than any base ML model.
 #%%
-def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None):
+def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None, artifact_dir=None):
     import pandas as pd, numpy as np
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
     import lightgbm as lgb, xgboost as xgb, catboost as cbt
     from imblearn.over_sampling import SMOTE
-    from river import stream
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    import uuid
+    from pathlib import Path
+
+    params = params or {}
+    artifact_dir = Path(artifact_dir or "./static/figures")
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     # Load dataset
     df = pd.read_csv(dataset_path)
@@ -273,15 +280,36 @@ def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None)
     X = df.drop(['Label'], axis=1)
     y = df['Label']
 
+    train_size = float(params.get("train_size", 0.8))
+    random_state = int(params.get("random_state", 0))
+    smote_2 = int(params.get("smote_minority_2", 1000))
+    smote_4 = int(params.get("smote_minority_4", 1000))
+
     # Split + balance
-    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=0)
-    smote = SMOTE(sampling_strategy={2:1000, 4:1000})
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, train_size=train_size, random_state=random_state
+    )
+    smote = SMOTE(sampling_strategy={2: smote_2, 4: smote_4})
     X_train, y_train = smote.fit_resample(X_train, y_train)
 
     # Train models
-    lg = lgb.LGBMClassifier()
-    xg = xgb.XGBClassifier()
-    cb = cbt.CatBoostClassifier(verbose=0)
+    lg = lgb.LGBMClassifier(
+        num_leaves=int(params.get("lgb_num_leaves", 31)),
+        learning_rate=float(params.get("lgb_learning_rate", 0.1)),
+        n_estimators=int(params.get("lgb_n_estimators", 100)),
+    )
+    xg = xgb.XGBClassifier(
+        n_estimators=int(params.get("xgb_n_estimators", 100)),
+        max_depth=int(params.get("xgb_max_depth", 6)),
+        learning_rate=float(params.get("xgb_learning_rate", 0.1)),
+    )
+    cb = cbt.CatBoostClassifier(
+        verbose=0,
+        depth=int(params.get("cb_depth", 6)),
+        iterations=int(params.get("cb_iterations", 200)),
+        learning_rate=float(params.get("cb_learning_rate", 0.1)),
+    )
+
     lg.fit(X_train, y_train)
     xg.fit(X_train.values, y_train)
     cb.fit(X_train, y_train)
@@ -297,11 +325,35 @@ def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None)
     preds = np.vstack([y_pred_lg, y_pred_xg, y_pred_cb])
     final_preds = np.round(np.mean(preds, axis=0))
 
-    return {
+    metrics = {
         'accuracy': accuracy_score(y_test, final_preds),
         'precision': precision_score(y_test, final_preds, average='weighted', zero_division=0),
         'recall': recall_score(y_test, final_preds, average='weighted', zero_division=0),
         'f1_score': f1_score(y_test, final_preds, average='weighted', zero_division=0)
+    }
+
+    # Confusion matrix figure
+    cm = confusion_matrix(y_test[:len(final_preds)], final_preds)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    sns.heatmap(cm, annot=True, fmt=".0f", cmap="Blues", ax=ax)
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    fig.tight_layout()
+
+    filename = f"lccde_cm_{uuid.uuid4().hex}.png"
+    fig_path = artifact_dir / filename
+    fig.savefig(fig_path)
+    plt.close(fig)
+
+    return {
+        'metrics': metrics,
+        'artifacts': [
+            {
+                'type': 'figure',
+                'label': 'Confusion Matrix',
+                'path': str(fig_path)
+            }
+        ]
     }
 
 

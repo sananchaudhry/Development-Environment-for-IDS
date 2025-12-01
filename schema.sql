@@ -5,6 +5,8 @@
 DROP TABLE IF EXISTS Metrics;
 DROP TABLE IF EXISTS Runs;
 DROP TABLE IF EXISTS Models;
+DROP TABLE IF EXISTS RunParameters;
+DROP TABLE IF EXISTS RunArtifacts;
 
 -- Store available model types
 CREATE TABLE IF NOT EXISTS Models (
@@ -24,6 +26,25 @@ CREATE TABLE IF NOT EXISTS Runs (
     timestamp    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes        TEXT,
     FOREIGN KEY(model_id) REFERENCES Models(model_id)
+);
+
+-- Store the parameters used for each run
+CREATE TABLE IF NOT EXISTS RunParameters (
+    param_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id      INTEGER,
+    param_name  TEXT,
+    param_value TEXT,
+    FOREIGN KEY(run_id) REFERENCES Runs(run_id)
+);
+
+-- Store artifact metadata (e.g., generated figures)
+CREATE TABLE IF NOT EXISTS RunArtifacts (
+    artifact_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id        INTEGER,
+    artifact_type TEXT,
+    label         TEXT,
+    path          TEXT,
+    FOREIGN KEY(run_id) REFERENCES Runs(run_id)
 );
 
 -- Store metrics for each run
