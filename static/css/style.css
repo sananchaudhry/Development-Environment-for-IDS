@@ -11,7 +11,15 @@ h2 {
 
 form {
   max-width: 900px;
-  margin: 0 auto;
+  margin: 0;
+}
+
+.compact-field {
+  max-width: 320px;
+}
+
+.param-field {
+  max-width: 280px;
 }
 
 .figure-thumb {
