@@ -34,14 +34,20 @@
         {% for key, schema in param_schema.items() %}
         {% set is_float = schema.type == float %}
         <div class="col">
-          <label class="form-label">{{ key }} <span class="text-muted small">(baseline: {{ baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] }})</span></label>
+          <label class="form-label">{{ key }}
+            <span class="text-muted small">
+              {{ schema.help if schema.help else '' }} Baseline: {{ baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] }}
+            </span>
+          </label>
           <input
             type="number"
             step="{% if is_float %}any{% else %}1{% endif %}"
             class="form-control"
             name="{{ key }}"
             value="{{ form_params[key] }}"
-            placeholder="{{ defaults[key] }}">
+            placeholder="{{ defaults[key] }}"
+            {% if schema.min is defined %}min="{{ schema.min }}"{% endif %}
+            {% if schema.max is defined %}max="{{ schema.max }}"{% endif %}>
         </div>
         {% endfor %}
       </div>
@@ -72,7 +78,7 @@
       <div class="d-flex flex-wrap gap-2">
         {% for art in baseline.artifacts %}
           <div class="text-center">
-            <img src="/{{ art.path }}" class="img-fluid rounded border" style="max-height: 180px;" alt="{{ art.label }}">
+            <img src="/{{ art.path }}" class="img-fluid rounded border figure-thumb" alt="{{ art.label }}">
             <div class="small text-muted">{{ art.label }}</div>
           </div>
         {% endfor %}
@@ -99,7 +105,7 @@
       <div class="d-flex flex-wrap gap-2">
         {% for art in comparison.new.artifacts %}
           <div class="text-center">
-            <img src="/{{ art.path }}" class="img-fluid rounded border" style="max-height: 180px;" alt="{{ art.label }}">
+            <img src="/{{ art.path }}" class="img-fluid rounded border figure-thumb" alt="{{ art.label }}">
             <div class="small text-muted">{{ art.label }}</div>
           </div>
         {% endfor %}

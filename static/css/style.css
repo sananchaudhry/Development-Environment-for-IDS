@@ -1,6 +1,7 @@
 body {
   font-family: 'Segoe UI', sans-serif;
   background-color: #f8f9fa;
+  text-align: left;
 }
 
 h2 {
@@ -9,8 +10,12 @@ h2 {
 }
 
 form {
-  max-width: 600px;
-  margin: auto;
+  max-width: none;
+  margin: 0;
+}
+
+.figure-thumb {
+  max-height: 320px;
 }
 
 footer p {

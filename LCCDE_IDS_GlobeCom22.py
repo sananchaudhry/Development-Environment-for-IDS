@@ -334,7 +334,7 @@ def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None,
 
     def _confusion_artifact(y_true, y_pred, label_prefix):
         cm = confusion_matrix(y_true, y_pred)
-        fig, ax = plt.subplots(figsize=(5, 4))
+        fig, ax = plt.subplots(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt=".0f", cmap="Blues", ax=ax)
         ax.set_xlabel("Predicted")
         ax.set_ylabel("True")
@@ -343,7 +343,7 @@ def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None,
 
         filename = f"{label_prefix.lower().replace(' ', '_')}_cm_{uuid.uuid4().hex}.png"
         fig_path = artifact_dir / filename
-        fig.savefig(fig_path)
+        fig.savefig(fig_path, dpi=200)
         plt.close(fig)
         return {
             'type': 'figure',

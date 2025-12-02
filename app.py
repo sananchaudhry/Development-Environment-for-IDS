@@ -13,20 +13,100 @@ DATABASE = 'ids_ml.db'
 FIGURE_DIR = Path("static/figures")
 
 # Canonical parameter schema for the LCCDE model
+# Ranges are derived from the model defaults inside `run_lccde_model` and
+# conservative, documented limits for each library to keep runs responsive.
 LCCDE_PARAM_SCHEMA = {
-    "train_size": {"type": float, "default": 0.8, "min": 0.1, "max": 0.95},
-    "random_state": {"type": int, "default": 0},
-    "smote_minority_2": {"type": int, "default": 1000, "min": 1},
-    "smote_minority_4": {"type": int, "default": 1000, "min": 1},
-    "lgb_num_leaves": {"type": int, "default": 31, "min": 2},
-    "lgb_learning_rate": {"type": float, "default": 0.1, "min": 0.0001, "max": 1.0},
-    "lgb_n_estimators": {"type": int, "default": 100, "min": 10},
-    "xgb_n_estimators": {"type": int, "default": 100, "min": 10},
-    "xgb_max_depth": {"type": int, "default": 6, "min": 1},
-    "xgb_learning_rate": {"type": float, "default": 0.1, "min": 0.0001, "max": 1.0},
-    "cb_depth": {"type": int, "default": 6, "min": 1},
-    "cb_iterations": {"type": int, "default": 200, "min": 10},
-    "cb_learning_rate": {"type": float, "default": 0.1, "min": 0.0001, "max": 1.0},
+    "train_size": {
+        "type": float,
+        "default": 0.8,
+        "min": 0.05,
+        "max": 0.95,
+        "help": "Proportion of data used for training (0.05–0.95).",
+    },
+    "random_state": {
+        "type": int,
+        "default": 0,
+        "min": 0,
+        "max": 1_000_000,
+        "help": "Seed for reproducibility (0–1,000,000).",
+    },
+    "smote_minority_2": {
+        "type": int,
+        "default": 1000,
+        "min": 1,
+        "max": 20000,
+        "help": "SMOTE target count for class 2 (1–20,000).",
+    },
+    "smote_minority_4": {
+        "type": int,
+        "default": 1000,
+        "min": 1,
+        "max": 20000,
+        "help": "SMOTE target count for class 4 (1–20,000).",
+    },
+    "lgb_num_leaves": {
+        "type": int,
+        "default": 31,
+        "min": 2,
+        "max": 2048,
+        "help": "LightGBM leaves per tree (2–2048).",
+    },
+    "lgb_learning_rate": {
+        "type": float,
+        "default": 0.1,
+        "min": 0.0001,
+        "max": 1.0,
+        "help": "LightGBM learning rate (0.0001–1).",
+    },
+    "lgb_n_estimators": {
+        "type": int,
+        "default": 100,
+        "min": 10,
+        "max": 1000,
+        "help": "LightGBM boosting rounds (10–1000).",
+    },
+    "xgb_n_estimators": {
+        "type": int,
+        "default": 100,
+        "min": 10,
+        "max": 1000,
+        "help": "XGBoost trees (10–1000).",
+    },
+    "xgb_max_depth": {
+        "type": int,
+        "default": 6,
+        "min": 1,
+        "max": 16,
+        "help": "XGBoost tree depth (1–16).",
+    },
+    "xgb_learning_rate": {
+        "type": float,
+        "default": 0.1,
+        "min": 0.0001,
+        "max": 1.0,
+        "help": "XGBoost learning rate (0.0001–1).",
+    },
+    "cb_depth": {
+        "type": int,
+        "default": 6,
+        "min": 1,
+        "max": 16,
+        "help": "CatBoost tree depth (1–16).",
+    },
+    "cb_iterations": {
+        "type": int,
+        "default": 200,
+        "min": 10,
+        "max": 1000,
+        "help": "CatBoost boosting rounds (10–1000).",
+    },
+    "cb_learning_rate": {
+        "type": float,
+        "default": 0.1,
+        "min": 0.0001,
+        "max": 1.0,
+        "help": "CatBoost learning rate (0.0001–1).",
+    },
 }
 
 LCCDE_PARAM_ALIASES = {
@@ -138,10 +218,18 @@ def validate_lccde_params(raw_params, base_params=None):
             continue
 
         if "min" in schema and cast_value < schema["min"]:
-            errors.append(f"Parameter '{canonical_key}' must be >= {schema['min']}.")
+            errors.append(
+                f"Parameter '{canonical_key}' must be >= {schema['min']}"
+                + (f" and <= {schema['max']}" if "max" in schema else "")
+                + f" (default {schema['default']})."
+            )
             continue
         if "max" in schema and cast_value > schema["max"]:
-            errors.append(f"Parameter '{canonical_key}' must be <= {schema['max']}.")
+            errors.append(
+                f"Parameter '{canonical_key}' must be <= {schema['max']}"
+                + (f" and >= {schema['min']}" if "min" in schema else "")
+                + f" (default {schema['default']})."
+            )
             continue
 
         normalized[canonical_key] = cast_value

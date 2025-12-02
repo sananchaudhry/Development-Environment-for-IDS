@@ -64,7 +64,7 @@
             <div class="d-flex flex-wrap gap-2">
               {% for art in selected_details.artifacts %}
                 <div class="text-center">
-                  <img src="/{{ art.path }}" alt="{{ art.label }}" class="img-fluid rounded border" style="max-height: 200px;">
+                  <img src="/{{ art.path }}" alt="{{ art.label }}" class="img-fluid rounded border figure-thumb">
                   <div class="small text-muted">{{ art.label }}</div>
                 </div>
               {% endfor %}
