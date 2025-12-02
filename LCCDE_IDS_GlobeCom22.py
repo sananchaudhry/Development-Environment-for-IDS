@@ -332,28 +332,35 @@ def run_lccde_model(dataset_path="./data/CICIDS2017_sample_km.csv", params=None,
         'f1_score': f1_score(y_test, final_preds, average='weighted', zero_division=0)
     }
 
-    # Confusion matrix figure
-    cm = confusion_matrix(y_test[:len(final_preds)], final_preds)
-    fig, ax = plt.subplots(figsize=(5, 4))
-    sns.heatmap(cm, annot=True, fmt=".0f", cmap="Blues", ax=ax)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("True")
-    fig.tight_layout()
+    def _confusion_artifact(y_true, y_pred, label_prefix):
+        cm = confusion_matrix(y_true, y_pred)
+        fig, ax = plt.subplots(figsize=(5, 4))
+        sns.heatmap(cm, annot=True, fmt=".0f", cmap="Blues", ax=ax)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("True")
+        ax.set_title(f"{label_prefix} Confusion Matrix")
+        fig.tight_layout()
 
-    filename = f"lccde_cm_{uuid.uuid4().hex}.png"
-    fig_path = artifact_dir / filename
-    fig.savefig(fig_path)
-    plt.close(fig)
+        filename = f"{label_prefix.lower().replace(' ', '_')}_cm_{uuid.uuid4().hex}.png"
+        fig_path = artifact_dir / filename
+        fig.savefig(fig_path)
+        plt.close(fig)
+        return {
+            'type': 'figure',
+            'label': f"{label_prefix} Confusion Matrix",
+            'path': str(fig_path)
+        }
+
+    artifacts = [
+        _confusion_artifact(y_test[:len(y_pred_lg)], y_pred_lg, "LightGBM"),
+        _confusion_artifact(y_test[:len(y_pred_xg)], y_pred_xg, "XGBoost"),
+        _confusion_artifact(y_test[:len(y_pred_cb)], y_pred_cb, "CatBoost"),
+        _confusion_artifact(y_test[:len(final_preds)], final_preds, "LCCDE Ensemble"),
+    ]
 
     return {
         'metrics': metrics,
-        'artifacts': [
-            {
-                'type': 'figure',
-                'label': 'Confusion Matrix',
-                'path': str(fig_path)
-            }
-        ]
+        'artifacts': artifacts,
     }
 
 

@@ -30,8 +30,22 @@
     </div>
     <div class="col-12">
       <label class="form-label">Adjusted parameters</label>
-      <textarea name="parameters" class="form-control" rows="4" placeholder="Override only what you need" spellcheck="false">{{ raw_params }}</textarea>
-      <div class="form-text">Leave blank to reuse baseline parameters. Accepts JSON or key=value pairs.</div>
+      <div class="row row-cols-1 row-cols-md-2 g-3">
+        {% for key, schema in param_schema.items() %}
+        {% set is_float = schema.type == float %}
+        <div class="col">
+          <label class="form-label">{{ key }} <span class="text-muted small">(baseline: {{ baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] }})</span></label>
+          <input
+            type="number"
+            step="{% if is_float %}any{% else %}1{% endif %}"
+            class="form-control"
+            name="{{ key }}"
+            value="{{ form_params[key] }}"
+            placeholder="{{ defaults[key] }}">
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-text">Leave a field blank to reuse the baseline value.</div>
     </div>
     <div class="col-12 d-flex justify-content-end">
       <button type="submit" class="btn btn-primary">Run comparison</button>
@@ -47,6 +61,12 @@
       <ul>
         {% for name, value in baseline.metrics.items() %}
           <li>{{ name }}: {{ value|round(4) }}</li>
+        {% endfor %}
+      </ul>
+      <h6 class="mt-2">Parameters</h6>
+      <ul class="small">
+        {% for name, value in baseline.params.items() %}
+          <li><code>{{ name }}</code>: {{ value }}</li>
         {% endfor %}
       </ul>
       <div class="d-flex flex-wrap gap-2">
@@ -68,6 +88,12 @@
       <ul>
         {% for name, value in comparison.new.metrics.items() %}
           <li>{{ name }}: {{ value|round(4) }}</li>
+        {% endfor %}
+      </ul>
+      <h6 class="mt-2">Parameters</h6>
+      <ul class="small">
+        {% for name, value in comparison.new.params.items() %}
+          <li><code>{{ name }}</code>: {{ value }}</li>
         {% endfor %}
       </ul>
       <div class="d-flex flex-wrap gap-2">

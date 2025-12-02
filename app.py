@@ -85,9 +85,12 @@ def normalize_key(key: str) -> str:
     return key_lower
 
 
-def parse_parameter_block(raw_params: str):
-    """Parse raw user input as JSON or key=value pairs."""
-    raw_params = raw_params.strip()
+def parse_parameter_block(raw_params):
+    """Parse parameters from either a mapping (preferred) or a raw string."""
+    if isinstance(raw_params, dict):
+        return {k: v for k, v in raw_params.items() if v not in (None, "")}
+
+    raw_params = (raw_params or "").strip()
     if not raw_params:
         return {}
     # Try JSON first
@@ -110,11 +113,11 @@ def parse_parameter_block(raw_params: str):
     return parsed
 
 
-def validate_lccde_params(raw_params: str):
+def validate_lccde_params(raw_params, base_params=None):
     """Validate user-supplied params and detect typos/incomplete entries."""
     parsed = parse_parameter_block(raw_params)
     errors, warnings = [], []
-    normalized = canonical_lccde_defaults()
+    normalized = dict(base_params) if base_params else canonical_lccde_defaults()
 
     for key, value in parsed.items():
         canonical_key = normalize_key(key)
@@ -272,13 +275,17 @@ def fetch_run_summaries():
 def run_model():
     selected_model = request.form.get('model', 'LCCDE') if request.method == 'POST' else 'LCCDE'
     dataset_value = request.form.get('dataset', '') if request.method == 'POST' else ''
-    raw_params = request.form.get('parameters', '') if request.method == 'POST' else ''
+    param_entries = (
+        {key: request.form.get(key, '') for key in LCCDE_PARAM_SCHEMA}
+        if request.method == 'POST'
+        else canonical_lccde_defaults()
+    )
     errors = []
     warnings = []
 
     if request.method == 'POST':
         dataset = dataset_value or "CICIDS2017_sample_km.csv"
-        parsed_params, errors, warnings = validate_lccde_params(raw_params)
+        parsed_params, errors, warnings = validate_lccde_params(param_entries)
 
         if selected_model != 'LCCDE':
             errors.append("Only the LCCDE model is currently supported in this interface.")
@@ -294,8 +301,9 @@ def run_model():
                 warnings=warnings,
                 selected_model=selected_model,
                 dataset_value=dataset_value,
-                raw_params=raw_params,
+                param_values=param_entries,
                 defaults=canonical_lccde_defaults(),
+                param_schema=LCCDE_PARAM_SCHEMA,
             )
 
         from LCCDE_IDS_GlobeCom22 import run_lccde_model
@@ -316,8 +324,9 @@ def run_model():
         warnings=warnings,
         selected_model=selected_model,
         dataset_value=dataset_value,
-        raw_params=raw_params,
+        param_values=param_entries or canonical_lccde_defaults(),
         defaults=canonical_lccde_defaults(),
+        param_schema=LCCDE_PARAM_SCHEMA,
     )
 
 @app.route('/history')
@@ -356,22 +365,20 @@ def compare():
     baseline_details = fetch_run_details(baseline_id) if baseline_id else None
     errors = []
     warnings = []
-    raw_params = ''
     dataset_value = ''
+    form_params = baseline_details["params"] if baseline_details and baseline_details.get("params") else canonical_lccde_defaults()
 
     if request.method == 'POST':
         baseline_id = request.form.get('baseline_id', type=int)
         baseline_details = fetch_run_details(baseline_id) if baseline_id else None
-        raw_params = request.form.get('parameters', '')
         dataset_value = request.form.get('dataset', '')
+        form_params = {key: request.form.get(key, '') for key in LCCDE_PARAM_SCHEMA}
 
         if not baseline_details:
             errors.append("A valid baseline run must be selected for comparison.")
         else:
-            override_params, errors, warnings = validate_lccde_params(raw_params)
-            # Start from baseline parameters if available, otherwise defaults
             base_params = baseline_details["params"] if baseline_details and baseline_details.get("params") else canonical_lccde_defaults()
-            merged_params = {**base_params, **override_params}
+            merged_params, errors, warnings = validate_lccde_params(form_params, base_params=base_params)
 
             dataset = dataset_value or baseline_details["run"]["dataset"]
             dataset_path = f"./data/{dataset}"
@@ -399,8 +406,10 @@ def compare():
         comparison=comparison,
         errors=errors,
         warnings=warnings,
-        raw_params=raw_params,
+        form_params=form_params,
         dataset_value=dataset_value,
+        defaults=canonical_lccde_defaults(),
+        param_schema=LCCDE_PARAM_SCHEMA,
     )
 
 if __name__ == '__main__':
