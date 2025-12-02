@@ -21,6 +21,7 @@ LCCDE_PARAM_SCHEMA = {
         "default": 0.8,
         "min": 0.05,
         "max": 0.95,
+        "step": 0.01,
         "help": "Proportion of data used for training (0.05–0.95).",
     },
     "random_state": {
@@ -56,6 +57,7 @@ LCCDE_PARAM_SCHEMA = {
         "default": 0.1,
         "min": 0.0001,
         "max": 1.0,
+        "step": 0.0001,
         "help": "LightGBM learning rate (0.0001–1).",
     },
     "lgb_n_estimators": {
@@ -84,6 +86,7 @@ LCCDE_PARAM_SCHEMA = {
         "default": 0.1,
         "min": 0.0001,
         "max": 1.0,
+        "step": 0.0001,
         "help": "XGBoost learning rate (0.0001–1).",
     },
     "cb_depth": {
@@ -105,6 +108,7 @@ LCCDE_PARAM_SCHEMA = {
         "default": 0.1,
         "min": 0.0001,
         "max": 1.0,
+        "step": 0.0001,
         "help": "CatBoost learning rate (0.0001–1).",
     },
 }

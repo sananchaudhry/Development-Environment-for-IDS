@@ -10,8 +10,8 @@ h2 {
 }
 
 form {
-  max-width: none;
-  margin: 0;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .figure-thumb {
