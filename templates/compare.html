@@ -1,17 +1,118 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Compare Results</h2>
-<form action="/compare" method="POST" class="mb-4">
-  <label>Select Runs to Compare:</label>
-  <select multiple name="run_ids" class="form-select">
-    {% for run in runs %}
-    <option value="{{ run.id }}">{{ run.model }} — {{ run.timestamp }}</option>
-    {% endfor %}
-  </select>
-  <button type="submit" class="btn btn-success mt-2">Compare</button>
+<h2>Compare &amp; Rerun</h2>
+
+{% if errors %}
+  <div class="alert alert-danger">
+    <ul class="mb-0">{% for err in errors %}<li>{{ err }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+{% if warnings %}
+  <div class="alert alert-warning">
+    <ul class="mb-0">{% for warn in warnings %}<li>{{ warn }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+<form action="/compare" method="POST" class="mb-4 p-3 border rounded bg-light">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label">Baseline run</label>
+      <select name="baseline_id" class="form-select">
+        <option value="" disabled {% if not baseline %}selected{% endif %}>Select a completed run</option>
+        {% for run in runs %}
+          <option value="{{ run.id }}" {% if baseline and baseline.run.id == run.id %}selected{% endif %}>#{{ run.id }} — {{ run.model }} ({{ run.timestamp }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Dataset (optional)</label>
+      <input type="text" class="form-control" name="dataset" value="{{ dataset_value }}" placeholder="Defaults to baseline dataset">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Adjusted parameters</label>
+      <div class="row row-cols-1 row-cols-md-2 g-3">
+        {% for key, schema in param_schema.items() %}
+        {% set is_float = schema.type == float %}
+        <div class="col">
+          <label class="form-label">{{ key }}
+            <span class="text-muted small">
+              {{ schema.help if schema.help else '' }} Baseline: {{ baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] }}
+            </span>
+          </label>
+          <input
+            type="number"
+            step="{% if is_float %}any{% else %}1{% endif %}"
+            class="form-control"
+            name="{{ key }}"
+            value="{{ form_params[key] }}"
+            placeholder="{{ defaults[key] }}"
+            {% if schema.min is defined %}min="{{ schema.min }}"{% endif %}
+            {% if schema.max is defined %}max="{{ schema.max }}"{% endif %}>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-text">Leave a field blank to reuse the baseline value.</div>
+    </div>
+    <div class="col-12 d-flex justify-content-end">
+      <button type="submit" class="btn btn-primary">Run comparison</button>
+    </div>
+  </div>
 </form>
 
-<canvas id="comparisonChart" width="400" height="200"></canvas>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<div class="row g-3">
+  <div class="col-md-6">
+    <h5>Baseline</h5>
+    {% if baseline %}
+      <p class="mb-1"><strong>Run:</strong> {{ baseline.run.id }} | <strong>Dataset:</strong> {{ baseline.run.dataset }}</p>
+      <ul>
+        {% for name, value in baseline.metrics.items() %}
+          <li>{{ name }}: {{ value|round(4) }}</li>
+        {% endfor %}
+      </ul>
+      <h6 class="mt-2">Parameters</h6>
+      <ul class="small">
+        {% for name, value in baseline.params.items() %}
+          <li><code>{{ name }}</code>: {{ value }}</li>
+        {% endfor %}
+      </ul>
+      <div class="d-flex flex-wrap gap-2">
+        {% for art in baseline.artifacts %}
+          <div class="text-center">
+            <img src="/{{ art.path }}" class="img-fluid rounded border figure-thumb" alt="{{ art.label }}">
+            <div class="small text-muted">{{ art.label }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">Choose a run to begin.</p>
+    {% endif %}
+  </div>
+  <div class="col-md-6">
+    <h5>New run</h5>
+    {% if comparison %}
+      <p class="mb-1"><strong>Run:</strong> {{ comparison.new.run.id }} | <strong>Dataset:</strong> {{ comparison.new.run.dataset }}</p>
+      <ul>
+        {% for name, value in comparison.new.metrics.items() %}
+          <li>{{ name }}: {{ value|round(4) }}</li>
+        {% endfor %}
+      </ul>
+      <h6 class="mt-2">Parameters</h6>
+      <ul class="small">
+        {% for name, value in comparison.new.params.items() %}
+          <li><code>{{ name }}</code>: {{ value }}</li>
+        {% endfor %}
+      </ul>
+      <div class="d-flex flex-wrap gap-2">
+        {% for art in comparison.new.artifacts %}
+          <div class="text-center">
+            <img src="/{{ art.path }}" class="img-fluid rounded border figure-thumb" alt="{{ art.label }}">
+            <div class="small text-muted">{{ art.label }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">Run a comparison to see updated results side-by-side.</p>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

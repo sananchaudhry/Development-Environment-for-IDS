@@ -2,31 +2,81 @@
 {% block content %}
 <h2>Run History</h2>
 
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Model</th>
-      <th>Dataset</th>
-      <th>Date</th>
-      <th>Accuracy</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for run in runs %}
-    <tr>
-      <td>{{ run.id }}</td>
-      <td>{{ run.model }}</td>
-      <td>{{ run.dataset }}</td>
-      <td>{{ run.timestamp }}</td>
-      <td>{{ run.accuracy }}</td>
-      <td>
-        <a href="/view/{{ run.id }}" class="btn btn-sm btn-info">View</a>
-        <a href="/delete/{{ run.id }}" class="btn btn-sm btn-danger">Delete</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="row g-3">
+  <div class="col-md-6">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Model</th>
+          <th>Dataset</th>
+          <th>Date</th>
+          <th>Accuracy</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr class="{% if selected_details and selected_details.run.id == run.id %}table-primary{% endif %}">
+          <td>{{ run.id }}</td>
+          <td>{{ run.model }}</td>
+          <td>{{ run.dataset }}</td>
+          <td>{{ run.timestamp }}</td>
+          <td>{{ run.accuracy }}</td>
+          <td>
+            <a href="/view/{{ run.id }}" class="btn btn-sm btn-info">View</a>
+            <a href="/delete/{{ run.id }}" class="btn btn-sm btn-danger">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col-md-6">
+    {% if selected_details %}
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-0">Run {{ selected_details.run.id }}</h5>
+            <small class="text-muted">{{ selected_details.run.timestamp }}</small>
+          </div>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('compare', baseline_id=selected_details.run.id) }}">Compare &amp; rerun</a>
+        </div>
+        <div class="card-body">
+          <p><strong>Model:</strong> {{ selected_details.run.model }}<br>
+             <strong>Dataset:</strong> {{ selected_details.run.dataset }}<br>
+             <strong>Status:</strong> {{ selected_details.run.status }}</p>
+          <h6>Metrics</h6>
+          <ul>
+            {% for name, value in selected_details.metrics.items() %}
+              <li>{{ name }}: {{ value|round(4) }}</li>
+            {% endfor %}
+          </ul>
+          <h6>Parameters</h6>
+          <ul class="small">
+            {% for name, value in selected_details.params.items() %}
+              <li><code>{{ name }}</code>: {{ value }}</li>
+            {% endfor %}
+          </ul>
+          <h6>Figures</h6>
+          {% if selected_details.artifacts %}
+            <div class="d-flex flex-wrap gap-2">
+              {% for art in selected_details.artifacts %}
+                <div class="text-center">
+                  <img src="/{{ art.path }}" alt="{{ art.label }}" class="img-fluid rounded border figure-thumb">
+                  <div class="small text-muted">{{ art.label }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted">No figures stored for this run.</p>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Select a run to see full details, parameters, and stored figures.</div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

@@ -2,26 +2,68 @@
 {% block content %}
 <h2>Run Machine Learning Model</h2>
 
+{% if errors %}
+  <div class="alert alert-danger">
+    <strong>Issues with your input:</strong>
+    <ul class="mb-0">
+      {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+{% if warnings %}
+  <div class="alert alert-warning">
+    <ul class="mb-0">
+      {% for warn in warnings %}<li>{{ warn }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
 <form action="/run" method="POST" class="p-4 bg-light rounded shadow-sm">
   <div class="mb-3">
     <label class="form-label">Select Model</label>
     <select class="form-select" name="model">
-      <option value="LCCDE">LCCDE</option>
-      <option value="Tree-Based">Tree-Based IDS</option>
-      <option value="MTH-IDS">MTH-IDS</option>
+      <option value="LCCDE" {% if selected_model=='LCCDE' %}selected{% endif %}>LCCDE</option>
+      <option value="Tree-Based" {% if selected_model=='Tree-Based' %}selected{% endif %}>Tree-Based IDS</option>
+      <option value="MTH-IDS" {% if selected_model=='MTH-IDS' %}selected{% endif %}>MTH-IDS</option>
     </select>
   </div>
 
   <div class="mb-3">
     <label class="form-label">Dataset</label>
-    <input type="text" class="form-control" name="dataset" placeholder="Enter dataset name">
+    <input type="text" class="form-control" name="dataset" placeholder="Enter dataset name" value="{{ dataset_value }}">
+    <div class="form-text">Defaults to <code>CICIDS2017_sample_km.csv</code> if left blank.</div>
   </div>
 
   <div class="mb-3">
     <label class="form-label">Parameters</label>
-    <textarea class="form-control" name="parameters" rows="3" placeholder="Enter parameters (JSON or key=value)"></textarea>
+    <div class="row row-cols-1 row-cols-md-2 g-3">
+      {% for key, schema in param_schema.items() %}
+      <div class="col">
+        <label class="form-label">{{ key }}
+          <span class="text-muted small">
+            ({{ schema.help if schema.help else '' }} Default: {{ defaults[key] }})
+          </span>
+        </label>
+        {% set is_float = schema.type == float %}
+        <input
+          type="number"
+          step="{% if is_float %}any{% else %}1{% endif %}"
+          class="form-control"
+          name="{{ key }}"
+          value="{{ param_values[key] }}"
+          placeholder="{{ defaults[key] }}"
+          {% if schema.min is defined %}min="{{ schema.min }}"{% endif %}
+          {% if schema.max is defined %}max="{{ schema.max }}"{% endif %}>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="form-text">Leave fields blank to use defaults.</div>
   </div>
 
-  <button type="submit" class="btn btn-primary">Run Model</button>
+  <div class="mt-3 d-flex justify-content-end gap-2">
+    <a href="{{ url_for('history') }}" class="btn btn-secondary">View History</a>
+    <button type="submit" class="btn btn-primary">Run Model</button>
+  </div>
 </form>
 {% endblock %}
