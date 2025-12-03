@@ -25,8 +25,8 @@ form {
 }
 
 .param-grid {
-  --bs-gutter-x: 0.75rem;
-  --bs-gutter-y: 0.75rem;
+  --bs-gutter-x: 0.35rem;
+  --bs-gutter-y: 0.35rem;
 }
 
 .history-info {
