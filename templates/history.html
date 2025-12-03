@@ -2,6 +2,10 @@
 {% block content %}
 <h2>Run History</h2>
 
+{% if not selected_details %}
+  <div class="alert alert-info">Select a run to see full details, parameters, and stored figures.</div>
+{% endif %}
+
 <div class="row g-3">
   <div class="col-md-6">
     <table class="table table-striped">
@@ -74,8 +78,6 @@
           {% endif %}
         </div>
       </div>
-    {% else %}
-      <div class="alert alert-info">Select a run to see full details, parameters, and stored figures.</div>
     {% endif %}
   </div>
 </div>

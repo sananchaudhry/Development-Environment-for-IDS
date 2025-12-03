@@ -40,11 +40,12 @@
     <div class="row row-cols-1 row-cols-md-2 g-3">
       {% for key, schema in param_schema.items() %}
       <div class="col">
-        <label class="form-label">{{ key }}
-          <span class="text-muted small">
-            ({{ schema.help if schema.help else '' }} Default: {{ defaults[key] }}{% if schema.min is defined %}; Range: {{ schema.min }}–{{ schema.max if schema.max is defined else '∞' }}{% endif %})
-          </span>
-        </label>
+        <label class="form-label mb-1">{{ key }}</label>
+        <div class="text-muted small mb-1">
+          {% if schema.help %}{{ schema.help }}{% endif %}
+          {% if schema.min is defined %}<span class="ms-1">Range: {{ schema.min }}–{{ schema.max if schema.max is defined else '∞' }}</span>{% endif %}
+          <span class="ms-1">Default: {{ defaults[key] }}</span>
+        </div>
         {% set is_float = schema.type == float %}
         <input
           type="number"

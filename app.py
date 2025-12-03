@@ -19,38 +19,38 @@ LCCDE_PARAM_SCHEMA = {
     "train_size": {
         "type": float,
         "default": 0.8,
-        "min": 0.05,
-        "max": 0.95,
+        "min": 0.01,
+        "max": 0.99,
         "step": 0.01,
-        "help": "Proportion of data used for training (0.05–0.95).",
+        "help": "Proportion of data used for training.",
     },
     "random_state": {
         "type": int,
         "default": 0,
         "min": 0,
         "max": 1_000_000,
-        "help": "Seed for reproducibility (0–1,000,000).",
+        "help": "Seed for reproducibility.",
     },
     "smote_minority_2": {
         "type": int,
         "default": 1000,
         "min": 1,
         "max": 20000,
-        "help": "SMOTE target count for class 2 (1–20,000).",
+        "help": "SMOTE target count for class 2.",
     },
     "smote_minority_4": {
         "type": int,
         "default": 1000,
         "min": 1,
         "max": 20000,
-        "help": "SMOTE target count for class 4 (1–20,000).",
+        "help": "SMOTE target count for class 4.",
     },
     "lgb_num_leaves": {
         "type": int,
         "default": 31,
         "min": 2,
         "max": 2048,
-        "help": "LightGBM leaves per tree (2–2048).",
+        "help": "LightGBM leaves per tree.",
     },
     "lgb_learning_rate": {
         "type": float,
@@ -58,28 +58,28 @@ LCCDE_PARAM_SCHEMA = {
         "min": 0.0001,
         "max": 1.0,
         "step": 0.0001,
-        "help": "LightGBM learning rate (0.0001–1).",
+        "help": "LightGBM learning rate.",
     },
     "lgb_n_estimators": {
         "type": int,
         "default": 100,
         "min": 10,
         "max": 1000,
-        "help": "LightGBM boosting rounds (10–1000).",
+        "help": "LightGBM boosting rounds.",
     },
     "xgb_n_estimators": {
         "type": int,
         "default": 100,
         "min": 10,
         "max": 1000,
-        "help": "XGBoost trees (10–1000).",
+        "help": "XGBoost trees.",
     },
     "xgb_max_depth": {
         "type": int,
         "default": 6,
         "min": 1,
         "max": 16,
-        "help": "XGBoost tree depth (1–16).",
+        "help": "XGBoost tree depth.",
     },
     "xgb_learning_rate": {
         "type": float,
@@ -87,21 +87,21 @@ LCCDE_PARAM_SCHEMA = {
         "min": 0.0001,
         "max": 1.0,
         "step": 0.0001,
-        "help": "XGBoost learning rate (0.0001–1).",
+        "help": "XGBoost learning rate.",
     },
     "cb_depth": {
         "type": int,
         "default": 6,
         "min": 1,
         "max": 16,
-        "help": "CatBoost tree depth (1–16).",
+        "help": "CatBoost tree depth.",
     },
     "cb_iterations": {
         "type": int,
         "default": 200,
         "min": 10,
         "max": 1000,
-        "help": "CatBoost boosting rounds (10–1000).",
+        "help": "CatBoost boosting rounds.",
     },
     "cb_learning_rate": {
         "type": float,
@@ -109,7 +109,7 @@ LCCDE_PARAM_SCHEMA = {
         "min": 0.0001,
         "max": 1.0,
         "step": 0.0001,
-        "help": "CatBoost learning rate (0.0001–1).",
+        "help": "CatBoost learning rate.",
     },
 }
 
@@ -237,10 +237,6 @@ def validate_lccde_params(raw_params, base_params=None):
             continue
 
         normalized[canonical_key] = cast_value
-
-    # Ensure train_size sanity
-    if normalized["train_size"] <= 0 or normalized["train_size"] >= 1:
-        errors.append("'train_size' must be between 0 and 1 (exclusive).")
 
     return normalized, errors, warnings
 
