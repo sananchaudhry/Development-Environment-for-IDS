@@ -17,7 +17,7 @@
   <div class="row g-3 align-items-end">
     <div class="col-md-4">
       <label class="form-label">Baseline run</label>
-      <select name="baseline_id" class="form-select">
+      <select name="baseline_id" class="form-select compact-field" id="baseline-select">
         <option value="" disabled {% if not baseline %}selected{% endif %}>Select a completed run</option>
         {% for run in runs %}
           <option value="{{ run.id }}" {% if baseline and baseline.run.id == run.id %}selected{% endif %}>#{{ run.id }} — {{ run.model }} ({{ run.timestamp }})</option>
@@ -26,28 +26,33 @@
     </div>
     <div class="col-md-4">
       <label class="form-label">Dataset (optional)</label>
-      <input type="text" class="form-control" name="dataset" value="{{ dataset_value }}" placeholder="Defaults to baseline dataset">
+      <input type="text" class="form-control compact-field" name="dataset" value="{{ dataset_value }}" placeholder="Defaults to baseline dataset">
     </div>
     <div class="col-12">
       <label class="form-label">Adjusted parameters</label>
       <div class="row row-cols-1 row-cols-md-2 g-3">
         {% for key, schema in param_schema.items() %}
         {% set is_float = schema.type == float %}
+        {% set baseline_value = baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] %}
         <div class="col">
-          <label class="form-label">{{ key }}
-            <span class="text-muted small">
-              {{ schema.help if schema.help else '' }} Baseline: {{ baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] }}
-            </span>
-          </label>
-          <input
-            type="number"
-            step="{% if is_float %}any{% else %}1{% endif %}"
-            class="form-control"
-            name="{{ key }}"
-            value="{{ form_params[key] }}"
-            placeholder="{{ defaults[key] }}"
-            {% if schema.min is defined %}min="{{ schema.min }}"{% endif %}
-            {% if schema.max is defined %}max="{{ schema.max }}"{% endif %}>
+          <label class="form-label mb-1">{{ key }}</label>
+          <div class="text-muted small mb-1">
+            {% if schema.help %}{{ schema.help }}{% endif %}
+            {% if schema.min is defined %}<span class="ms-1">Range: {{ schema.min }}–{{ schema.max if schema.max is defined else '∞' }}</span>{% endif %}
+            <span class="ms-1">Default: {{ defaults[key] }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <input
+              type="number"
+              step="{{ schema.step if schema.step is defined else ('any' if is_float else 1) }}"
+              class="form-control param-field"
+              name="{{ key }}"
+              value="{{ form_params[key] }}"
+              placeholder="{{ defaults[key] }}"
+              {% if schema.min is defined %}min="{{ schema.min }}"{% endif %}
+              {% if schema.max is defined %}max="{{ schema.max }}"{% endif %}>
+            <div class="old-param-value">Old: {{ baseline_value }}</div>
+          </div>
         </div>
         {% endfor %}
       </div>
@@ -115,4 +120,17 @@
     {% endif %}
   </div>
 </div>
+<script>
+  const baselineSelect = document.getElementById('baseline-select');
+  if (baselineSelect) {
+    baselineSelect.addEventListener('change', (event) => {
+      const selected = event.target.value;
+      if (selected) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('baseline_id', selected);
+        window.location.href = url.toString();
+      }
+    });
+  }
+</script>
 {% endblock %}
