@@ -30,7 +30,7 @@
     </div>
     <div class="col-12">
       <label class="form-label">Adjusted parameters</label>
-      <div class="row row-cols-1 row-cols-md-2 g-3">
+      <div class="row row-cols-1 row-cols-md-2 param-grid">
         {% for key, schema in param_schema.items() %}
         {% set is_float = schema.type == float %}
         {% set baseline_value = baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] %}

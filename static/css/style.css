@@ -24,6 +24,17 @@ form {
   min-width: 90px;
 }
 
+.param-grid {
+  --bs-gutter-x: 0.75rem;
+  --bs-gutter-y: 0.75rem;
+}
+
+.history-info {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+}
+
 .old-param-value {
   min-width: 140px;
   padding: 0.35rem 0.5rem;
