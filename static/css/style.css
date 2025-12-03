@@ -10,8 +10,39 @@ h2 {
 }
 
 form {
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
+}
+
+.compact-field {
+  max-width: 320px;
+}
+
+.param-field {
+  width: 100%;
+  max-width: 140px;
+  min-width: 90px;
+}
+
+.param-grid {
+  --bs-gutter-x: 0.75rem;
+  --bs-gutter-y: 0.75rem;
+}
+
+.history-info {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+}
+
+.old-param-value {
+  min-width: 140px;
+  padding: 0.35rem 0.5rem;
+  background-color: #f1f3f5;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  font-size: 0.9rem;
+  color: #495057;
 }
 
 .figure-thumb {

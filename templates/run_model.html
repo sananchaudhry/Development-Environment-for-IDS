@@ -22,7 +22,7 @@
 <form action="/run" method="POST" class="p-4 bg-light rounded shadow-sm">
   <div class="mb-3">
     <label class="form-label">Select Model</label>
-    <select class="form-select" name="model">
+    <select class="form-select compact-field" name="model">
       <option value="LCCDE" {% if selected_model=='LCCDE' %}selected{% endif %}>LCCDE</option>
       <option value="Tree-Based" {% if selected_model=='Tree-Based' %}selected{% endif %}>Tree-Based IDS</option>
       <option value="MTH-IDS" {% if selected_model=='MTH-IDS' %}selected{% endif %}>MTH-IDS</option>
@@ -31,25 +31,26 @@
 
   <div class="mb-3">
     <label class="form-label">Dataset</label>
-    <input type="text" class="form-control" name="dataset" placeholder="Enter dataset name" value="{{ dataset_value }}">
+    <input type="text" class="form-control compact-field" name="dataset" placeholder="Enter dataset name" value="{{ dataset_value }}">
     <div class="form-text">Defaults to <code>CICIDS2017_sample_km.csv</code> if left blank.</div>
   </div>
 
   <div class="mb-3">
     <label class="form-label">Parameters</label>
-    <div class="row row-cols-1 row-cols-md-2 g-3">
+    <div class="row row-cols-1 row-cols-md-2 param-grid">
       {% for key, schema in param_schema.items() %}
       <div class="col">
-        <label class="form-label">{{ key }}
-          <span class="text-muted small">
-            ({{ schema.help if schema.help else '' }} Default: {{ defaults[key] }}{% if schema.min is defined %}; Range: {{ schema.min }}–{{ schema.max if schema.max is defined else '∞' }}{% endif %})
-          </span>
-        </label>
+        <label class="form-label mb-1">{{ key }}</label>
+        <div class="text-muted small mb-1">
+          {% if schema.help %}{{ schema.help }}{% endif %}
+          {% if schema.min is defined %}<span class="ms-1">Range: {{ schema.min }}–{{ schema.max if schema.max is defined else '∞' }}</span>{% endif %}
+          <span class="ms-1">Default: {{ defaults[key] }}</span>
+        </div>
         {% set is_float = schema.type == float %}
         <input
           type="number"
           step="{{ schema.step if schema.step is defined else ('any' if is_float else 1) }}"
-          class="form-control"
+          class="form-control param-field"
           name="{{ key }}"
           value="{{ param_values[key] }}"
           placeholder="{{ defaults[key] }}"
