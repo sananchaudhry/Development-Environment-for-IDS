@@ -157,6 +157,11 @@ def ensure_extended_schema(conn):
         """
     )
 
+    # Ensure runs table has a run_name column for human-friendly labels.
+    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(Runs);")}
+    if "run_name" not in existing_columns:
+        conn.execute("ALTER TABLE Runs ADD COLUMN run_name TEXT;")
+
 
 def canonical_lccde_defaults():
     return {k: v["default"] for k, v in LCCDE_PARAM_SCHEMA.items()}
@@ -245,7 +250,15 @@ def home():
     return redirect(url_for('run_model'))
 
 
-def store_run_results(model_name, dataset, metrics, params, artifacts, notes="Executed from web interface"):
+def store_run_results(
+    model_name,
+    dataset,
+    metrics,
+    params,
+    artifacts,
+    notes="Executed from web interface",
+    run_name=None,
+):
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     conn = get_db_connection()
     ensure_extended_schema(conn)
@@ -256,10 +269,10 @@ def store_run_results(model_name, dataset, metrics, params, artifacts, notes="Ex
 
     cur.execute(
         """
-        INSERT INTO Runs (model_id, dataset_name, status, runtime_sec, notes)
-        VALUES ((SELECT model_id FROM Models WHERE model_name=?), ?, 'completed', 0, ?);
+        INSERT INTO Runs (model_id, dataset_name, status, runtime_sec, notes, run_name)
+        VALUES ((SELECT model_id FROM Models WHERE model_name=?), ?, 'completed', 0, ?, ?);
         """,
-        (model_name, dataset, notes),
+        (model_name, dataset, notes, run_name),
     )
     run_id = cur.lastrowid
 
@@ -300,7 +313,8 @@ def fetch_run_details(run_id):
                r.dataset_name AS dataset,
                r.timestamp AS timestamp,
                r.status AS status,
-               r.notes AS notes
+               r.notes AS notes,
+               r.run_name AS run_name
         FROM Runs r
         JOIN Models m ON r.model_id = m.model_id
         WHERE r.run_id = ?;
@@ -349,7 +363,8 @@ def fetch_run_summaries():
                m.model_name AS model,
                r.dataset_name AS dataset,
                r.timestamp AS timestamp,
-               (SELECT metric_value FROM Metrics WHERE run_id = r.run_id AND metric_name='accuracy') AS accuracy
+               (SELECT metric_value FROM Metrics WHERE run_id = r.run_id AND metric_name='accuracy') AS accuracy,
+               r.run_name AS run_name
         FROM Runs r
         JOIN Models m ON r.model_id = m.model_id
         ORDER BY r.timestamp DESC;
@@ -363,6 +378,7 @@ def fetch_run_summaries():
 def run_model():
     selected_model = request.form.get('model', 'LCCDE') if request.method == 'POST' else 'LCCDE'
     dataset_value = request.form.get('dataset', '') if request.method == 'POST' else ''
+    run_name_value = request.form.get('run_name', '') if request.method == 'POST' else ''
     param_entries = (
         {key: request.form.get(key, '') for key in LCCDE_PARAM_SCHEMA}
         if request.method == 'POST'
@@ -389,6 +405,7 @@ def run_model():
                 warnings=warnings,
                 selected_model=selected_model,
                 dataset_value=dataset_value,
+                run_name_value=run_name_value,
                 param_values=param_entries,
                 defaults=canonical_lccde_defaults(),
                 param_schema=LCCDE_PARAM_SCHEMA,
@@ -400,7 +417,14 @@ def run_model():
         metrics = results.get('metrics', {})
         artifacts = results.get('artifacts', [])
 
-        run_id = store_run_results(selected_model, dataset, metrics, parsed_params, artifacts)
+        run_id = store_run_results(
+            selected_model,
+            dataset,
+            metrics,
+            parsed_params,
+            artifacts,
+            run_name=run_name_value or None,
+        )
         print(f"Stored results for run ID: {run_id}")
 
         flash(f"Run {run_id} completed successfully.", "success")
@@ -412,6 +436,7 @@ def run_model():
         warnings=warnings,
         selected_model=selected_model,
         dataset_value=dataset_value,
+        run_name_value=run_name_value,
         param_values=param_entries or canonical_lccde_defaults(),
         defaults=canonical_lccde_defaults(),
         param_schema=LCCDE_PARAM_SCHEMA,
@@ -445,59 +470,84 @@ def delete_run(run_id):
     flash(f"Run {run_id} deleted.", "info")
     return redirect(url_for('history'))
 
+
+@app.route('/runs/<int:run_id>/rename', methods=['POST'])
+def rename_run(run_id):
+    new_name = (request.form.get('run_name') or '').strip()
+    conn = get_db_connection()
+    ensure_extended_schema(conn)
+    cur = conn.cursor()
+    cur.execute("UPDATE Runs SET run_name=? WHERE run_id=?", (new_name if new_name else None, run_id))
+    conn.commit()
+    conn.close()
+    flash(f"Updated name for run {run_id}.", "success")
+    return redirect(url_for('history', run_id=run_id))
+
 @app.route('/compare', methods=['GET', 'POST'])
 def compare():
     runs = fetch_run_summaries()
-    baseline_id = request.args.get('baseline_id', type=int)
-    comparison = None
-    baseline_details = fetch_run_details(baseline_id) if baseline_id else None
+    mode = request.args.get('mode', 'compare')
+
+    # Accept legacy baseline_id parameter but prefer explicit run_a/run_b pair.
+    run_a_id = request.args.get('run_a', type=int) or request.args.get('baseline_id', type=int)
+    run_b_id = request.args.get('run_b', type=int)
+
     errors = []
-    warnings = []
-    dataset_value = ''
-    form_params = baseline_details["params"] if baseline_details and baseline_details.get("params") else canonical_lccde_defaults()
+    run_a_details = fetch_run_details(run_a_id) if run_a_id else None
+    run_b_details = fetch_run_details(run_b_id) if run_b_id else None
 
-    if request.method == 'POST':
+    if mode == 'rerun' and request.method == 'POST':
         baseline_id = request.form.get('baseline_id', type=int)
-        baseline_details = fetch_run_details(baseline_id) if baseline_id else None
-        dataset_value = request.form.get('dataset', '')
-        form_params = {key: request.form.get(key, '') for key in LCCDE_PARAM_SCHEMA}
+        new_run_name = (request.form.get('run_name') or '').strip()
 
-        if not baseline_details:
-            errors.append("A valid baseline run must be selected for comparison.")
+        if not baseline_id:
+            errors.append("Select a run to rerun for comparison.")
         else:
-            base_params = baseline_details["params"] if baseline_details and baseline_details.get("params") else canonical_lccde_defaults()
-            merged_params, errors, warnings = validate_lccde_params(form_params, base_params=base_params)
+            baseline_details = fetch_run_details(baseline_id)
+            if not baseline_details:
+                errors.append("Selected baseline run was not found.")
+            else:
+                dataset = baseline_details['run']['dataset']
+                dataset_path = f"./data/{dataset}"
+                if not os.path.exists(dataset_path):
+                    errors.append(f"Dataset '{dataset}' was not found in the data/ directory.")
+                else:
+                    from LCCDE_IDS_GlobeCom22 import run_lccde_model
 
-            dataset = dataset_value or baseline_details["run"]["dataset"]
-            dataset_path = f"./data/{dataset}"
-            if not os.path.exists(dataset_path):
-                errors.append(f"Dataset '{dataset}' was not found in the data/ directory.")
+                    results = run_lccde_model(
+                        dataset_path=dataset_path,
+                        params=baseline_details['params'],
+                        artifact_dir=FIGURE_DIR,
+                    )
+                    metrics = results.get('metrics', {})
+                    artifacts = results.get('artifacts', [])
 
-            if not errors:
-                from LCCDE_IDS_GlobeCom22 import run_lccde_model
+                    run_b_id = store_run_results(
+                        baseline_details['run']['model'],
+                        dataset,
+                        metrics,
+                        baseline_details['params'],
+                        artifacts,
+                        run_name=new_run_name or None,
+                    )
+                    flash(f"Reran baseline {baseline_id} as run {run_b_id}.", "success")
+                    run_a_id = baseline_id
+                    run_a_details = baseline_details
+                    run_b_details = fetch_run_details(run_b_id)
+                    mode = 'compare'
 
-                results = run_lccde_model(dataset_path=dataset_path, params=merged_params, artifact_dir=FIGURE_DIR)
-                metrics = results.get('metrics', {})
-                artifacts = results.get('artifacts', [])
-                new_run_id = store_run_results('LCCDE', dataset, metrics, merged_params, artifacts, notes=f"Comparison rerun of {baseline_id}")
-                comparison = {
-                    'baseline': baseline_details,
-                    'new': fetch_run_details(new_run_id)
-                }
-
-                flash(f"Comparison run {new_run_id} completed.", "success")
+    if run_a_id and run_b_id and run_a_id == run_b_id:
+        errors.append("Select two different runs to compare them side-by-side.")
 
     return render_template(
         'compare.html',
         runs=runs,
-        baseline=baseline_details,
-        comparison=comparison,
+        run_a=run_a_details,
+        run_b=run_b_details,
         errors=errors,
-        warnings=warnings,
-        form_params=form_params,
-        dataset_value=dataset_value,
-        defaults=canonical_lccde_defaults(),
-        param_schema=LCCDE_PARAM_SCHEMA,
+        selected_a=run_a_id,
+        selected_b=run_b_id,
+        mode=mode,
     )
 
 if __name__ == '__main__':

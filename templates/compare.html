@@ -1,136 +1,88 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Compare &amp; Rerun</h2>
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <h2 class="mb-0">Compare Runs</h2>
+  <div class="btn-group" role="group" aria-label="Comparison mode">
+    <a class="btn btn-outline-primary {% if mode != 'rerun' %}active{% endif %}"
+       href="{{ url_for('compare', mode='compare', run_a=selected_a, run_b=selected_b) }}">Compare</a>
+    <a class="btn btn-outline-primary {% if mode == 'rerun' %}active{% endif %}"
+       href="{{ url_for('compare', mode='rerun', baseline_id=selected_a) }}">Compare &amp; rerun</a>
+  </div>
+</div>
 
 {% if errors %}
   <div class="alert alert-danger">
     <ul class="mb-0">{% for err in errors %}<li>{{ err }}</li>{% endfor %}</ul>
   </div>
 {% endif %}
-{% if warnings %}
-  <div class="alert alert-warning">
-    <ul class="mb-0">{% for warn in warnings %}<li>{{ warn }}</li>{% endfor %}</ul>
-  </div>
+
+{% if mode == 'rerun' %}
+  <form method="post" action="{{ url_for('compare', mode='rerun') }}" class="mb-4 p-3 border rounded bg-light">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-6">
+        <label class="form-label">Baseline run</label>
+        <select name="baseline_id" class="form-select compact-field">
+          <option value="" selected>Select a run to rerun</option>
+          {% for run in runs %}
+            <option value="{{ run.id }}" {% if selected_a == run.id %}selected{% endif %}>
+              {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">New run name (optional)</label>
+        <input type="text" class="form-control compact-field" name="run_name" maxlength="120" placeholder="e.g., Baseline rerun">
+      </div>
+      <div class="col-md-2 d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary w-100">Compare &amp; rerun</button>
+      </div>
+    </div>
+    <div class="form-text">Reruns reuse the stored parameters and dataset from the selected baseline.</div>
+  </form>
+{% else %}
+  <form method="get" action="/compare" class="mb-4 p-3 border rounded bg-light">
+    <input type="hidden" name="mode" value="compare">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Run A</label>
+        <select name="run_a" class="form-select compact-field">
+          <option value="" {% if not selected_a %}selected{% endif %}>Select a run</option>
+          {% for run in runs %}
+            <option value="{{ run.id }}" {% if selected_a == run.id %}selected{% endif %}>
+              {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Run B</label>
+        <select name="run_b" class="form-select compact-field">
+          <option value="" {% if not selected_b %}selected{% endif %}>Select another run</option>
+          {% for run in runs %}
+            <option value="{{ run.id }}" {% if selected_b == run.id %}selected{% endif %}>
+              {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary w-100">Compare</button>
+      </div>
+    </div>
+  </form>
 {% endif %}
 
-<form action="/compare" method="POST" class="mb-4 p-3 border rounded bg-light">
-  <div class="row g-3 align-items-end">
-    <div class="col-md-4">
-      <label class="form-label">Baseline run</label>
-      <select name="baseline_id" class="form-select compact-field" id="baseline-select">
-        <option value="" disabled {% if not baseline %}selected{% endif %}>Select a completed run</option>
-        {% for run in runs %}
-          <option value="{{ run.id }}" {% if baseline and baseline.run.id == run.id %}selected{% endif %}>#{{ run.id }} — {{ run.model }} ({{ run.timestamp }})</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Dataset (optional)</label>
-      <input type="text" class="form-control compact-field" name="dataset" value="{{ dataset_value }}" placeholder="Defaults to baseline dataset">
-    </div>
-    <div class="col-12">
-      <label class="form-label">Adjusted parameters</label>
-      <div class="row row-cols-1 row-cols-md-2 param-grid">
-        {% for key, schema in param_schema.items() %}
-        {% set is_float = schema.type == float %}
-        {% set baseline_value = baseline.params[key] if baseline and baseline.params[key] is not none else defaults[key] %}
-        <div class="col">
-          <label class="form-label mb-1">{{ key }}</label>
-          <div class="text-muted small mb-1">
-            {% if schema.help %}{{ schema.help }}{% endif %}
-            {% if schema.min is defined %}<span class="ms-1">Range: {{ schema.min }}–{{ schema.max if schema.max is defined else '∞' }}</span>{% endif %}
-            <span class="ms-1">Default: {{ defaults[key] }}</span>
-          </div>
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <input
-              type="number"
-              step="{{ schema.step if schema.step is defined else ('any' if is_float else 1) }}"
-              class="form-control param-field"
-              name="{{ key }}"
-              value="{{ form_params[key] }}"
-              placeholder="{{ defaults[key] }}"
-              {% if schema.min is defined %}min="{{ schema.min }}"{% endif %}
-              {% if schema.max is defined %}max="{{ schema.max }}"{% endif %}>
-            <div class="old-param-value">Old: {{ baseline_value }}</div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <div class="form-text">Leave a field blank to reuse the baseline value.</div>
-    </div>
-    <div class="col-12 d-flex justify-content-end">
-      <button type="submit" class="btn btn-primary">Run comparison</button>
-    </div>
+<div class="row g-3 comparison-grid">
+  <div class="col-12 col-xl-6">
+    {% with selected_run=run_a, card_id='a' %}
+      {% include 'partials/run_compare_card.html' %}
+    {% endwith %}
   </div>
-</form>
-
-<div class="row g-3">
-  <div class="col-md-6">
-    <h5>Baseline</h5>
-    {% if baseline %}
-      <p class="mb-1"><strong>Run:</strong> {{ baseline.run.id }} | <strong>Dataset:</strong> {{ baseline.run.dataset }}</p>
-      <ul>
-        {% for name, value in baseline.metrics.items() %}
-          <li>{{ name }}: {{ value|round(4) }}</li>
-        {% endfor %}
-      </ul>
-      <h6 class="mt-2">Parameters</h6>
-      <ul class="small">
-        {% for name, value in baseline.params.items() %}
-          <li><code>{{ name }}</code>: {{ value }}</li>
-        {% endfor %}
-      </ul>
-      <div class="d-flex flex-wrap gap-2">
-        {% for art in baseline.artifacts %}
-          <div class="text-center">
-            <img src="/{{ art.path }}" class="img-fluid rounded border figure-thumb" alt="{{ art.label }}">
-            <div class="small text-muted">{{ art.label }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p class="text-muted">Choose a run to begin.</p>
-    {% endif %}
-  </div>
-  <div class="col-md-6">
-    <h5>New run</h5>
-    {% if comparison %}
-      <p class="mb-1"><strong>Run:</strong> {{ comparison.new.run.id }} | <strong>Dataset:</strong> {{ comparison.new.run.dataset }}</p>
-      <ul>
-        {% for name, value in comparison.new.metrics.items() %}
-          <li>{{ name }}: {{ value|round(4) }}</li>
-        {% endfor %}
-      </ul>
-      <h6 class="mt-2">Parameters</h6>
-      <ul class="small">
-        {% for name, value in comparison.new.params.items() %}
-          <li><code>{{ name }}</code>: {{ value }}</li>
-        {% endfor %}
-      </ul>
-      <div class="d-flex flex-wrap gap-2">
-        {% for art in comparison.new.artifacts %}
-          <div class="text-center">
-            <img src="/{{ art.path }}" class="img-fluid rounded border figure-thumb" alt="{{ art.label }}">
-            <div class="small text-muted">{{ art.label }}</div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p class="text-muted">Run a comparison to see updated results side-by-side.</p>
-    {% endif %}
+  <div class="col-12 col-xl-6">
+    {% with selected_run=run_b, card_id='b' %}
+      {% include 'partials/run_compare_card.html' %}
+    {% endwith %}
   </div>
 </div>
-<script>
-  const baselineSelect = document.getElementById('baseline-select');
-  if (baselineSelect) {
-    baselineSelect.addEventListener('change', (event) => {
-      const selected = event.target.value;
-      if (selected) {
-        const url = new URL(window.location.href);
-        url.searchParams.set('baseline_id', selected);
-        window.location.href = url.toString();
-      }
-    });
-  }
-</script>
 {% endblock %}

@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS Runs (
     runtime_sec  REAL,
     timestamp    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes        TEXT,
+    run_name     TEXT,
     FOREIGN KEY(model_id) REFERENCES Models(model_id)
 );
 

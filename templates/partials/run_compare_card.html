@@ -1,0 +1,63 @@
+<div class="comparison-card h-100 p-3 bg-white shadow-sm rounded">
+  {% if selected_run %}
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+      <div>
+        <div class="run-title">{{ selected_run.run.run_name or ('Run #' ~ selected_run.run.id) }}</div>
+        <div class="text-muted small">Run #{{ selected_run.run.id }} • ID {{ selected_run.run.id }}</div>
+        <div class="text-muted small">{{ selected_run.run.model }} • {{ selected_run.run.timestamp }}</div>
+        <div class="text-muted small">Dataset: {{ selected_run.run.dataset }}</div>
+      </div>
+    </div>
+
+    <div class="row g-3 align-items-start comparison-body">
+      <div class="col-lg-5 col-xl-4">
+        <h6 class="section-label">Metrics</h6>
+        <ul class="list-unstyled metric-list mb-3">
+          {% for name, value in selected_run.metrics.items() %}
+            <li class="metric-item"><span class="metric-name">{{ name }}</span><span class="metric-value">{{ value|round(4) }}</span></li>
+          {% endfor %}
+        </ul>
+
+        <h6 class="section-label">Parameters</h6>
+        <ul class="list-unstyled param-list mb-0">
+          {% for name, value in selected_run.params.items() %}
+            <li><code>{{ name }}</code>: <span class="param-value">{{ value }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="col-lg-7 col-xl-8">
+        <div class="primary-figure shadow-sm rounded h-100">
+          {% if selected_run.artifacts %}
+            <img src="/{{ selected_run.artifacts[0].path }}" class="img-fluid rounded-top" alt="{{ selected_run.artifacts[0].label }}">
+            <div class="figure-label small text-muted px-2 py-2">{{ selected_run.artifacts[0].label }}</div>
+          {% else %}
+            <div class="p-4 text-center text-muted">No figure stored for this run.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if selected_run.artifacts and selected_run.artifacts|length > 1 %}
+      {% set collapse_id = 'more-' ~ card_id ~ '-' ~ selected_run.run.id %}
+      <div class="mt-3 text-end">
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#{{ collapse_id }}" aria-expanded="false" aria-controls="{{ collapse_id }}">
+          View more figures
+        </button>
+      </div>
+      <div class="collapse mt-2" id="{{ collapse_id }}">
+        <div class="row g-2">
+          {% for art in selected_run.artifacts[1:] %}
+            <div class="col-6">
+              <div class="extra-figure card border-0 shadow-sm h-100">
+                <img src="/{{ art.path }}" class="img-fluid rounded" alt="{{ art.label }}">
+                <div class="figure-label small text-muted px-2 py-1">{{ art.label }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <p class="text-muted mb-0">Choose a run to populate this column.</p>
+  {% endif %}
+</div>
