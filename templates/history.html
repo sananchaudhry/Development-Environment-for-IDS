@@ -12,6 +12,7 @@
       <thead>
         <tr>
           <th>ID</th>
+          <th>Name</th>
           <th>Model</th>
           <th>Dataset</th>
           <th>Date</th>
@@ -23,6 +24,7 @@
         {% for run in runs %}
         <tr class="{% if selected_details and selected_details.run.id == run.id %}table-primary{% endif %}">
           <td>{{ run.id }}</td>
+          <td>{{ run.run_name or '—' }}</td>
           <td>{{ run.model }}</td>
           <td>{{ run.dataset }}</td>
           <td>{{ run.timestamp }}</td>
@@ -45,10 +47,19 @@
             <h5 class="mb-0">Run {{ selected_details.run.id }}</h5>
             <small class="text-muted">{{ selected_details.run.timestamp }}</small>
           </div>
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('compare', baseline_id=selected_details.run.id) }}">Compare &amp; rerun</a>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('compare', run_a=selected_details.run.id) }}">Compare</a>
         </div>
         <div class="card-body">
-          <p><strong>Model:</strong> {{ selected_details.run.model }}<br>
+          <form class="row g-2 align-items-end mb-3" action="{{ url_for('rename_run', run_id=selected_details.run.id) }}" method="POST">
+            <div class="col-sm-8">
+              <label class="form-label mb-1">Run name</label>
+              <input type="text" name="run_name" class="form-control" maxlength="120" value="{{ selected_details.run.run_name or '' }}" placeholder="Add a friendly label">
+            </div>
+            <div class="col-sm-4 d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary mt-sm-4">Save name</button>
+            </div>
+          </form>
+          <p class="mb-2"><strong>Model:</strong> {{ selected_details.run.model }}<br>
              <strong>Dataset:</strong> {{ selected_details.run.dataset }}<br>
              <strong>Status:</strong> {{ selected_details.run.status }}</p>
           <h6>Metrics</h6>
