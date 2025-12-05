@@ -55,3 +55,70 @@ footer p {
   margin: 0;
   font-size: 0.9rem;
 }
+
+.comparison-card {
+  min-height: 480px;
+}
+
+.run-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.section-label {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #495057;
+}
+
+.metric-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+}
+
+.metric-name {
+  font-weight: 600;
+}
+
+.metric-value {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.param-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  font-size: 0.98rem;
+}
+
+.param-value {
+  font-weight: 600;
+}
+
+.primary-figure img {
+  width: 100%;
+  object-fit: contain;
+}
+
+.figure-label {
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.extra-figure img {
+  width: 100%;
+  object-fit: contain;
+}
