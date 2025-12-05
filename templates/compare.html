@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Compare Runs</h2>
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <h2 class="mb-0">Compare Runs</h2>
+  <div class="btn-group" role="group" aria-label="Comparison mode">
+    <a class="btn btn-outline-primary {% if mode != 'rerun' %}active{% endif %}"
+       href="{{ url_for('compare', mode='compare', run_a=selected_a, run_b=selected_b) }}">Compare</a>
+    <a class="btn btn-outline-primary {% if mode == 'rerun' %}active{% endif %}"
+       href="{{ url_for('compare', mode='rerun', baseline_id=selected_a) }}">Compare &amp; rerun</a>
+  </div>
+</div>
 
 {% if errors %}
   <div class="alert alert-danger">
@@ -8,36 +16,62 @@
   </div>
 {% endif %}
 
-<form method="get" action="/compare" class="mb-4 p-3 border rounded bg-light">
-  <div class="row g-3 align-items-end">
-    <div class="col-md-5">
-      <label class="form-label">Run A</label>
-      <select name="run_a" class="form-select compact-field">
-        <option value="" {% if not selected_a %}selected{% endif %}>Select a run</option>
-        {% for run in runs %}
-          <option value="{{ run.id }}" {% if selected_a == run.id %}selected{% endif %}>
-            {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
-          </option>
-        {% endfor %}
-      </select>
+{% if mode == 'rerun' %}
+  <form method="post" action="{{ url_for('compare', mode='rerun') }}" class="mb-4 p-3 border rounded bg-light">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-6">
+        <label class="form-label">Baseline run</label>
+        <select name="baseline_id" class="form-select compact-field">
+          <option value="" selected>Select a run to rerun</option>
+          {% for run in runs %}
+            <option value="{{ run.id }}" {% if selected_a == run.id %}selected{% endif %}>
+              {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">New run name (optional)</label>
+        <input type="text" class="form-control compact-field" name="run_name" maxlength="120" placeholder="e.g., Baseline rerun">
+      </div>
+      <div class="col-md-2 d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary w-100">Compare &amp; rerun</button>
+      </div>
     </div>
-    <div class="col-md-5">
-      <label class="form-label">Run B</label>
-      <select name="run_b" class="form-select compact-field">
-        <option value="" {% if not selected_b %}selected{% endif %}>Select another run</option>
-        {% for run in runs %}
-          <option value="{{ run.id }}" {% if selected_b == run.id %}selected{% endif %}>
-            {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
-          </option>
-        {% endfor %}
-      </select>
+    <div class="form-text">Reruns reuse the stored parameters and dataset from the selected baseline.</div>
+  </form>
+{% else %}
+  <form method="get" action="/compare" class="mb-4 p-3 border rounded bg-light">
+    <input type="hidden" name="mode" value="compare">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Run A</label>
+        <select name="run_a" class="form-select compact-field">
+          <option value="" {% if not selected_a %}selected{% endif %}>Select a run</option>
+          {% for run in runs %}
+            <option value="{{ run.id }}" {% if selected_a == run.id %}selected{% endif %}>
+              {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Run B</label>
+        <select name="run_b" class="form-select compact-field">
+          <option value="" {% if not selected_b %}selected{% endif %}>Select another run</option>
+          {% for run in runs %}
+            <option value="{{ run.id }}" {% if selected_b == run.id %}selected{% endif %}>
+              {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary w-100">Compare</button>
+      </div>
     </div>
-    <div class="col-md-2 d-flex justify-content-end">
-      <button type="submit" class="btn btn-primary w-100">Compare</button>
-    </div>
-  </div>
-  <div class="form-text">Pick two finished runs to view them side-by-side without rerunning training.</div>
-</form>
+  </form>
+{% endif %}
 
 <div class="row g-3 comparison-grid">
   <div class="col-12 col-xl-6">

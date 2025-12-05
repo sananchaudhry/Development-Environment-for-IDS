@@ -483,9 +483,11 @@ def rename_run(run_id):
     flash(f"Updated name for run {run_id}.", "success")
     return redirect(url_for('history', run_id=run_id))
 
-@app.route('/compare', methods=['GET'])
+@app.route('/compare', methods=['GET', 'POST'])
 def compare():
     runs = fetch_run_summaries()
+    mode = request.args.get('mode', 'compare')
+
     # Accept legacy baseline_id parameter but prefer explicit run_a/run_b pair.
     run_a_id = request.args.get('run_a', type=int) or request.args.get('baseline_id', type=int)
     run_b_id = request.args.get('run_b', type=int)
@@ -493,6 +495,46 @@ def compare():
     errors = []
     run_a_details = fetch_run_details(run_a_id) if run_a_id else None
     run_b_details = fetch_run_details(run_b_id) if run_b_id else None
+
+    if mode == 'rerun' and request.method == 'POST':
+        baseline_id = request.form.get('baseline_id', type=int)
+        new_run_name = (request.form.get('run_name') or '').strip()
+
+        if not baseline_id:
+            errors.append("Select a run to rerun for comparison.")
+        else:
+            baseline_details = fetch_run_details(baseline_id)
+            if not baseline_details:
+                errors.append("Selected baseline run was not found.")
+            else:
+                dataset = baseline_details['run']['dataset']
+                dataset_path = f"./data/{dataset}"
+                if not os.path.exists(dataset_path):
+                    errors.append(f"Dataset '{dataset}' was not found in the data/ directory.")
+                else:
+                    from LCCDE_IDS_GlobeCom22 import run_lccde_model
+
+                    results = run_lccde_model(
+                        dataset_path=dataset_path,
+                        params=baseline_details['params'],
+                        artifact_dir=FIGURE_DIR,
+                    )
+                    metrics = results.get('metrics', {})
+                    artifacts = results.get('artifacts', [])
+
+                    run_b_id = store_run_results(
+                        baseline_details['run']['model'],
+                        dataset,
+                        metrics,
+                        baseline_details['params'],
+                        artifacts,
+                        run_name=new_run_name or None,
+                    )
+                    flash(f"Reran baseline {baseline_id} as run {run_b_id}.", "success")
+                    run_a_id = baseline_id
+                    run_a_details = baseline_details
+                    run_b_details = fetch_run_details(run_b_id)
+                    mode = 'compare'
 
     if run_a_id and run_b_id and run_a_id == run_b_id:
         errors.append("Select two different runs to compare them side-by-side.")
@@ -505,6 +547,7 @@ def compare():
         errors=errors,
         selected_a=run_a_id,
         selected_b=run_b_id,
+        mode=mode,
     )
 
 if __name__ == '__main__':

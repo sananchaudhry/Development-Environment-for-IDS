@@ -1,16 +1,16 @@
 <div class="comparison-card h-100 p-3 bg-white shadow-sm rounded">
   {% if selected_run %}
-    <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
       <div>
         <div class="run-title">{{ selected_run.run.run_name or ('Run #' ~ selected_run.run.id) }}</div>
+        <div class="text-muted small">Run #{{ selected_run.run.id }} • ID {{ selected_run.run.id }}</div>
         <div class="text-muted small">{{ selected_run.run.model }} • {{ selected_run.run.timestamp }}</div>
         <div class="text-muted small">Dataset: {{ selected_run.run.dataset }}</div>
       </div>
-      <span class="badge bg-secondary align-self-center">ID {{ selected_run.run.id }}</span>
     </div>
 
     <div class="row g-3 align-items-start comparison-body">
-      <div class="col-lg-7">
+      <div class="col-lg-5 col-xl-4">
         <h6 class="section-label">Metrics</h6>
         <ul class="list-unstyled metric-list mb-3">
           {% for name, value in selected_run.metrics.items() %}
@@ -25,11 +25,11 @@
           {% endfor %}
         </ul>
       </div>
-      <div class="col-lg-5">
-        <div class="primary-figure card border-0 shadow-sm">
+      <div class="col-lg-7 col-xl-8">
+        <div class="primary-figure shadow-sm rounded h-100">
           {% if selected_run.artifacts %}
-            <img src="/{{ selected_run.artifacts[0].path }}" class="img-fluid rounded" alt="{{ selected_run.artifacts[0].label }}">
-            <div class="figure-label small text-muted px-2 py-1">{{ selected_run.artifacts[0].label }}</div>
+            <img src="/{{ selected_run.artifacts[0].path }}" class="img-fluid rounded-top" alt="{{ selected_run.artifacts[0].label }}">
+            <div class="figure-label small text-muted px-2 py-2">{{ selected_run.artifacts[0].label }}</div>
           {% else %}
             <div class="p-4 text-center text-muted">No figure stored for this run.</div>
           {% endif %}
