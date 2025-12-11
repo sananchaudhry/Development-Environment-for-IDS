@@ -45,16 +45,48 @@
       <div class="row g-4 mt-3">
         <div class="col-lg-5">
           <div class="p-3 bg-white border rounded h-100">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="mb-0">Baseline snapshot</h6>
+            <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+              <div>
+                <div class="run-title">{{ run_a.run.run_name or ('Run #' ~ run_a.run.id) }}</div>
+                <div class="text-muted small">Run #{{ run_a.run.id }} • ID {{ run_a.run.id }}</div>
+                <div class="text-muted small">{{ run_a.run.model }} • {{ run_a.run.timestamp }}</div>
+                <div class="text-muted small">Dataset: {{ run_a.run.dataset }}</div>
+              </div>
               {% if baseline_dataset %}<span class="badge bg-secondary">{{ baseline_dataset }}</span>{% endif %}
             </div>
-            <div class="mb-2 small text-muted">Existing parameters</div>
-            <ul class="list-unstyled mb-0 small">
-              {% for name, value in run_a.params.items() %}
-                <li><code>{{ name }}</code>: {{ value }}</li>
-              {% endfor %}
-            </ul>
+
+            <div class="row g-3 align-items-start">
+              <div class="col-12">
+                <h6 class="section-label mb-2">Metrics</h6>
+                <ul class="list-unstyled metric-list small mb-3">
+                  {% for name, value in run_a.metrics.items() %}
+                    <li class="metric-item d-flex justify-content-between">
+                      <span class="metric-name">{{ name }}</span>
+                      <span class="metric-value">{{ value|round(4) }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div class="col-12">
+                <h6 class="section-label mb-2">Existing parameters</h6>
+                <ul class="list-unstyled mb-0 small">
+                  {% for name, value in run_a.params.items() %}
+                    <li><code>{{ name }}</code>: {{ value }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div class="col-12">
+                <h6 class="section-label mb-2">Primary figure</h6>
+                <div class="primary-figure shadow-sm rounded">
+                  {% if run_a.artifacts %}
+                    <img src="/{{ run_a.artifacts[0].path }}" class="img-fluid rounded-top" alt="{{ run_a.artifacts[0].label }}">
+                    <div class="figure-label small text-muted px-2 py-2">{{ run_a.artifacts[0].label }}</div>
+                  {% else %}
+                    <div class="p-3 text-center text-muted">No figure stored for this run.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="col-lg-7">
