@@ -18,11 +18,12 @@
 
 {% if mode == 'rerun' %}
   <form method="post" action="{{ url_for('compare', mode='rerun') }}" class="mb-4 p-3 border rounded bg-light">
+    <input type="hidden" name="preview_only" id="rerun-preview-flag" value="0">
     <div class="row g-3 align-items-end">
       <div class="col-md-6">
         <label class="form-label">Baseline run</label>
-        <select name="baseline_id" class="form-select compact-field">
-          <option value="" selected>Select a run to rerun</option>
+        <select name="baseline_id" class="form-select compact-field" onchange="document.getElementById('rerun-preview-flag').value='1'; this.form.submit()">
+          <option value="" {% if not selected_a %}selected{% endif %}>Select a run to rerun</option>
           {% for run in runs %}
             <option value="{{ run.id }}" {% if selected_a == run.id %}selected{% endif %}>
               {{ run.run_name or ('Run #' ~ run.id) }} — {{ run.model }} ({{ run.timestamp }})
@@ -35,10 +36,48 @@
         <input type="text" class="form-control compact-field" name="run_name" maxlength="120" placeholder="e.g., Baseline rerun">
       </div>
       <div class="col-md-2 d-flex justify-content-end">
-        <button type="submit" class="btn btn-primary w-100">Compare &amp; rerun</button>
+        <button type="submit" class="btn btn-primary w-100" onclick="document.getElementById('rerun-preview-flag').value='0'">Compare &amp; rerun</button>
       </div>
     </div>
-    <div class="form-text">Reruns reuse the stored parameters and dataset from the selected baseline.</div>
+    <div class="form-text">Reruns reuse the stored dataset and let you tweak the parameters before running again.</div>
+
+    {% if run_a %}
+      <div class="row g-4 mt-3">
+        <div class="col-lg-6 col-xl-5">
+          {% with selected_run=run_a, card_id='baseline-rerun' %}
+            {% include 'partials/run_compare_card.html' %}
+          {% endwith %}
+        </div>
+        <div class="col-lg-6 col-xl-7">
+          <div class="p-3 bg-white border rounded h-100">
+            <h6 class="mb-2">Adjust parameters for rerun</h6>
+            <div class="row row-cols-1 row-cols-md-2 param-grid">
+              {% for key, schema in param_schema.items() %}
+              <div class="col">
+                <label class="form-label mb-1">{{ key }}</label>
+                <div class="text-muted small mb-1">
+                  {% if schema.help %}{{ schema.help }}{% endif %}
+                  {% if schema.min is defined %}<span class="ms-1">Range: {{ schema.min }}–{{ schema.max if schema.max is defined else '∞' }}</span>{% endif %}
+                  <span class="ms-1">Default: {{ rerun_defaults[key] }}</span>
+                </div>
+                {% set is_float = schema.type == float %}
+                <input
+                  type="number"
+                  step="{{ schema.step if schema.step is defined else ('any' if is_float else 1) }}"
+                  class="form-control param-field"
+                  name="{{ key }}"
+                  value="{{ rerun_param_values.get(key, '') }}"
+                  placeholder="{{ rerun_defaults[key] }}"
+                  {% if schema.min is defined %}min="{{ schema.min }}"{% endif %}
+                  {% if schema.max is defined %}max="{{ schema.max }}"{% endif %}>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="form-text">Leave fields blank to reuse the baseline value.</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
   </form>
 {% else %}
   <form method="get" action="/compare" class="mb-4 p-3 border rounded bg-light">
