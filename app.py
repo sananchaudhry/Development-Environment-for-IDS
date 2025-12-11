@@ -493,30 +493,59 @@ def compare():
     run_b_id = request.args.get('run_b', type=int)
 
     errors = []
+    rerun_param_values = canonical_lccde_defaults()
+    baseline_dataset = None
+
     run_a_details = fetch_run_details(run_a_id) if run_a_id else None
     run_b_details = fetch_run_details(run_b_id) if run_b_id else None
 
-    if mode == 'rerun' and request.method == 'POST':
-        baseline_id = request.form.get('baseline_id', type=int)
-        new_run_name = (request.form.get('run_name') or '').strip()
+    if mode == 'rerun':
+        baseline_id = (
+            request.form.get('baseline_id', type=int)
+            if request.method == 'POST'
+            else (run_a_id or None)
+        )
+        preview_only = request.form.get('preview_only') == '1' if request.method == 'POST' else False
 
-        if not baseline_id:
-            errors.append("Select a run to rerun for comparison.")
-        else:
-            baseline_details = fetch_run_details(baseline_id)
-            if not baseline_details:
+        if baseline_id and (not run_a_id or run_a_id != baseline_id):
+            run_a_id = baseline_id
+            run_a_details = fetch_run_details(run_a_id)
+
+        baseline_details = run_a_details
+        if baseline_details:
+            rerun_param_values = dict(baseline_details['params'])
+            baseline_dataset = baseline_details['run']['dataset']
+
+        if request.method == 'POST' and not preview_only:
+            new_run_name = (request.form.get('run_name') or '').strip()
+
+            if not baseline_id:
+                errors.append("Select a run to rerun for comparison.")
+            elif not baseline_details:
                 errors.append("Selected baseline run was not found.")
             else:
+                param_entries = {key: request.form.get(key, '') for key in LCCDE_PARAM_SCHEMA}
+                parsed_params, param_errors, _ = validate_lccde_params(
+                    param_entries, base_params=baseline_details['params']
+                )
+                errors.extend(param_errors)
+
                 dataset = baseline_details['run']['dataset']
                 dataset_path = f"./data/{dataset}"
                 if not os.path.exists(dataset_path):
                     errors.append(f"Dataset '{dataset}' was not found in the data/ directory.")
-                else:
+
+                rerun_param_values = {
+                    key: request.form.get(key) or baseline_details['params'].get(key, '')
+                    for key in LCCDE_PARAM_SCHEMA
+                }
+
+                if not errors:
                     from LCCDE_IDS_GlobeCom22 import run_lccde_model
 
                     results = run_lccde_model(
                         dataset_path=dataset_path,
-                        params=baseline_details['params'],
+                        params=parsed_params,
                         artifact_dir=FIGURE_DIR,
                     )
                     metrics = results.get('metrics', {})
@@ -526,7 +555,7 @@ def compare():
                         baseline_details['run']['model'],
                         dataset,
                         metrics,
-                        baseline_details['params'],
+                        parsed_params,
                         artifacts,
                         run_name=new_run_name or None,
                     )
@@ -548,6 +577,10 @@ def compare():
         selected_a=run_a_id,
         selected_b=run_b_id,
         mode=mode,
+        rerun_param_values=rerun_param_values,
+        rerun_defaults=canonical_lccde_defaults(),
+        param_schema=LCCDE_PARAM_SCHEMA,
+        baseline_dataset=baseline_dataset,
     )
 
 if __name__ == '__main__':
